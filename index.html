@@ -1,147 +1,59 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>The Gentle Minute Steward</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      color: white;
-      text-align: center;
-      background-image: url('ChatGPT Image Jun 26, 2025, 09_29_43 AM.png');
-      background-size: cover;
-      background-position: center;
+import { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
+export default function GentleMinuteSteward() {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [now, setNow] = useState("");
+  const [end, setEnd] = useState("");
+  const [presenters, setPresenters] = useState("");
+  const [timePerPresenter, setTimePerPresenter] = useState(0);
+  const [countdown, setCountdown] = useState(0);
+  const [running, setRunning] = useState(false);
+
+  useEffect(() => {
+    let timer;
+    if (running && countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+    } else if (countdown === 60) {
+      new Audio("/chime-soft.mp3").play();
+    } else if (countdown === 0 && running) {
+      new Audio("/chime-loud.mp3").play();
+      setRunning(false);
     }
-    .overlay {
-      background-color: rgba(0, 0, 0, 0.5);
-      padding: 2em;
-      min-height: 100vh;
-    }
-    #countdown {
-      font-size: 5em;
-      margin: 20px 0;
-    }
-    input, button, textarea {
-      font-size: 1em;
-      padding: 0.5em;
-      margin: 0.5em;
-    }
-    textarea {
-      width: 300px;
-      height: 100px;
-    }
-  </style>
-</head>
-<body>
-<div class="overlay">
-  <h1>The Gentle Minute Steward</h1>
-  <div id="setup">
-    <label>What time is it now? <input type="time" id="startTime"></label><br>
-    <label>What time does this meeting end? <input type="time" id="endTime"></label><br>
-    <label>How many presenters are there? <input type="number" id="presenters" min="1"></label><br>
-    <label>Enter presenter names (one per line):<br><textarea id="presenterNames"></textarea></label><br>
-    <button onclick="startSession()">Start Session</button>
-  </div>
-  <div id="timerSection" style="display:none">
-    <h2 id="presenterTitle">Presenter <span id="presenterNum">1</span></h2>
-    <div id="countdown">00:00</div>
-    <button onclick="nextPresenter()">Next Presenter</button>
-    <div id="history"></div>
-  </div>
-</div>
+    return () => clearInterval(timer);
+  }, [countdown, running]);
 
-<audio id="chimeSoft" src="https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg"></audio>
-<audio id="chimeLoud" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg"></audio>
+  const handleSubmit = () => {
+    const startTime = new Date(`1970-01-01T${now}:00`);
+    const endTime = new Date(`1970-01-01T${end}:00`);
+    const diff = (endTime - startTime) / 1000; // in seconds
+    const eachTime = Math.floor(diff / parseInt(presenters));
+    setTimePerPresenter(eachTime);
+    setCountdown(eachTime);
+    setRunning(true);
+    setCurrentStep(1);
+  };
 
-<script>
-let times = [], current = 0, interval, softPlayed = false, presenterNames = [], actualTimes = [], timeLeft;
-let chimeSoft = document.getElementById("chimeSoft");
-let chimeLoud = document.getElementById("chimeLoud");
-
-function startSession() {
-  const start = document.getElementById("startTime").value;
-  const end = document.getElementById("endTime").value;
-  const presenters = parseInt(document.getElementById("presenters").value);
-  const namesText = document.getElementById("presenterNames").value.trim();
-  
-  if (!start || !end || !presenters || presenters < 1) return alert("Fill all fields properly.");
-
-  presenterNames = namesText ? namesText.split("\n") : Array.from({length: presenters}, (_, i) => `Presenter ${i+1}`);
-  if (presenterNames.length < presenters) {
-    for (let i = presenterNames.length; i < presenters; i++) {
-      presenterNames.push(`Presenter ${i+1}`);
-    }
-  }
-
-  const now = new Date();
-  let [sh, sm] = start.split(":").map(Number);
-  let [eh, em] = end.split(":").map(Number);
-
-  const startTime = new Date(now.setHours(sh, sm, 0, 0));
-  const endTime = new Date(now.setHours(eh, em, 0, 0));
-  const totalMillis = endTime - startTime;
-
-  if (totalMillis <= 0) return alert("End time must be after start time.");
-
-  const presenterTime = totalMillis / presenters;
-  for (let i = 0; i < presenters; i++) times.push(presenterTime);
-
-  document.getElementById("setup").style.display = "none";
-  document.getElementById("timerSection").style.display = "block";
-  runTimer();
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-200 to-purple-400 text-center p-4">
+      <h1 className="text-4xl font-bold mb-6">The Gentle Minute Steward</h1>
+      {currentStep === 0 && (
+        <div className="space-y-4 w-full max-w-md">
+          <Input type="time" value={now} onChange={(e) => setNow(e.target.value)} placeholder="What time is it now?" />
+          <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} placeholder="What time does the meeting end?" />
+          <Input type="number" value={presenters} onChange={(e) => setPresenters(e.target.value)} placeholder="How many presenters?" />
+          <Button onClick={handleSubmit}>Start Timer</Button>
+        </div>
+      )}
+      {currentStep === 1 && (
+        <div>
+          <p className="text-xl mb-2">Time per presenter:</p>
+          <h2 className="text-5xl font-mono">{Math.floor(countdown / 60)}:{String(countdown % 60).padStart(2, "0")}</h2>
+        </div>
+      )}
+    </div>
+  );
 }
-
-function runTimer() {
-  const countdown = document.getElementById("countdown");
-  const presenterTitle = document.getElementById("presenterTitle");
-  presenterTitle.innerHTML = `${presenterNames[current]}`;
-  timeLeft = times[current];
-  softPlayed = false;
-
-  interval = setInterval(() => {
-    timeLeft -= 1000;
-    const min = Math.floor(timeLeft / 60000);
-    const sec = Math.floor((timeLeft % 60000) / 1000);
-    countdown.textContent = `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
-
-    if (timeLeft <= 60000 && !softPlayed) {
-      chimeSoft.play();
-      softPlayed = true;
-    }
-
-    if (timeLeft <= 0) {
-      chimeLoud.play();
-      clearInterval(interval);
-    }
-  }, 1000);
-}
-
-function nextPresenter() {
-  clearInterval(interval);
-  const elapsed = times[current] - timeLeft;
-  actualTimes.push(elapsed);
-  const historyDiv = document.getElementById("history");
-  const minutesUsed = (elapsed / 60000).toFixed(2);
-  historyDiv.innerHTML += `<p>${presenterNames[current]} used ${minutesUsed} min</p>`;
-
-  let remaining = 0;
-  for (let i = current+1; i < times.length; i++) remaining += times[i];
-
-  let presentersLeft = times.length - (current + 1);
-  let newTime = (remaining + timeLeft);
-  let updated = newTime / presentersLeft;
-  for (let i = current + 1; i < times.length; i++) times[i] = updated;
-
-  if (++current >= times.length) {
-    document.getElementById("timerSection").innerHTML = "<h2>Session Complete</h2>" + historyDiv.innerHTML;
-    return;
-  }
-
-  document.getElementById("presenterNum").textContent = current + 1;
-  runTimer();
-}
-</script>
-</body>
-</html>
