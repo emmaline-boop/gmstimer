@@ -1,0 +1,67 @@
+import { useState, useEffect } from "react";
+
+export default function GentleMinuteSteward() {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [now, setNow] = useState("");
+  const [end, setEnd] = useState("");
+  const [presenters, setPresenters] = useState("");
+  const [timePerPresenter, setTimePerPresenter] = useState(0);
+  const [countdown, setCountdown] = useState(0);
+  const [running, setRunning] = useState(false);
+
+  useEffect(() => {
+    let timer;
+    if (running && countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+    } else if (countdown === 60 && running) {
+      const softChime = new Audio("/chime-soft.mp3");
+      softChime.play();
+    } else if (countdown === 0 && running) {
+      const loudChime = new Audio("/chime-loud.mp3");
+      loudChime.play();
+      setRunning(false);
+    }
+    return () => clearInterval(timer);
+  }, [countdown, running]);
+
+  const handleSubmit = () => {
+    if (!now || !end || !presenters || isNaN(presenters)) return;
+    const [startHours, startMinutes] = now.split(":").map(Number);
+    const [endHours, endMinutes] = end.split(":").map(Number);
+    const startTime = new Date();
+    startTime.setHours(startHours, startMinutes, 0);
+    const endTime = new Date();
+    endTime.setHours(endHours, endMinutes, 0);
+    if (endTime <= startTime) return;
+
+    const totalSeconds = Math.floor((endTime - startTime) / 1000);
+    const timeEach = Math.floor(totalSeconds / parseInt(presenters));
+
+    setTimePerPresenter(timeEach);
+    setCountdown(timeEach);
+    setRunning(true);
+    setCurrentStep(1);
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-200 to-purple-400 text-center p-4">
+      <h1 className="text-4xl font-bold mb-6">The Gentle Minute Steward</h1>
+      {currentStep === 0 && (
+        <div className="space-y-4 w-full max-w-md">
+          <input type="time" value={now} onChange={(e) => setNow(e.target.value)} className="w-full p-2 rounded border" placeholder="What time is it now?" />
+          <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className="w-full p-2 rounded border" placeholder="What time does the meeting end?" />
+          <input type="number" value={presenters} onChange={(e) => setPresenters(e.target.value)} className="w-full p-2 rounded border" placeholder="How many presenters?" />
+          <button onClick={handleSubmit} className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">Start Timer</button>
+        </div>
+      )}
+      {currentStep === 1 && (
+        <div>
+          <p className="text-xl mb-2">Time per presenter:</p>
+          <h2 className="text-5xl font-mono">{Math.floor(countdown / 60)}:{String(countdown % 60).padStart(2, "0")}</h2>
+        </div>
+      )}
+    </div>
+  );
+}
